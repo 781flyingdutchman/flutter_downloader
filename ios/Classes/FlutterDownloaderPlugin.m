@@ -586,8 +586,7 @@ static BOOL initialized = NO;
 
                 result(newTaskId);
                 [self updateTask:taskId newTaskId:newTaskId status:STATUS_RUNNING resumable:NO];
-                NSDictionary *task = [self loadTaskWithId:newTaskId];
-                NSNumber *progress = task[KEY_PROGRESS];
+                NSNumber *progress = [self loadTaskWithId:newTaskId][KEY_PROGRESS];
                 [self sendUpdateProgressForTaskId:newTaskId inStatus:@(STATUS_RUNNING) andProgress:progress];
             } else {
                 result([FlutterError errorWithCode:@"invalid_data"
