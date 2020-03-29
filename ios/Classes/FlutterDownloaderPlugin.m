@@ -92,7 +92,7 @@ static BOOL initialized = NO;
             maxConcurrentTasks = @3;
         }
         NSLog(@"MAXIMUM_CONCURRENT_TASKS = %@", maxConcurrentTasks);
-        NSURLSessionConfiguration *sessionConfiguration = [NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:[NSString stringWithFormat:@"%@.download.background.%f", NSBundle.mainBundle.bundleIdentifier, [[NSDate date] timeIntervalSince1970]]];
+        NSURLSessionConfiguration *sessionConfiguration = [NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:[NSString stringWithFormat:@"%@.download.background", NSBundle.mainBundle.bundleIdentifier]];
         sessionConfiguration.HTTPMaximumConnectionsPerHost = [maxConcurrentTasks intValue];
         _session = [NSURLSession sessionWithConfiguration:sessionConfiguration delegate:self delegateQueue:nil];
         NSLog(@"init NSURLSession with id: %@", [[_session configuration] identifier]);
