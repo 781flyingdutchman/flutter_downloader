@@ -328,9 +328,9 @@ static BOOL initialized = NO;
     return absolutePath;
 }
 
-- (long)currentTimeInMilliseconds
+- (long long)currentTimeInMilliseconds
 {
-    return [[NSDate date] timeIntervalSince1970]*1000;
+    return (long long)([[NSDate date] timeIntervalSince1970]*1000);
 }
 
 # pragma mark - Database Accessing
