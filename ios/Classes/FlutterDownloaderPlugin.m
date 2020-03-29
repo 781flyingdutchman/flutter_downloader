@@ -92,7 +92,7 @@ static BOOL initialized = NO;
             maxConcurrentTasks = @3;
         }
         NSLog(@"MAXIMUM_CONCURRENT_TASKS = %@", maxConcurrentTasks);
-        NSURLSessionConfiguration *sessionConfiguration = [NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:[NSString stringWithFormat:@"%@.download.background", NSBundle.mainBundle.bundleIdentifier]];
+        NSURLSessionConfiguration *sessionConfiguration = [NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:[NSString stringWithFormat:@"%@.download.background.%f", NSBundle.mainBundle.bundleIdentifier, [[NSDate date] timeIntervalSince1970]]];
         sessionConfiguration.HTTPMaximumConnectionsPerHost = [maxConcurrentTasks intValue];
         _session = [NSURLSession sessionWithConfiguration:sessionConfiguration delegate:self delegateQueue:nil];
         NSLog(@"init NSURLSession with id: %@", [[_session configuration] identifier]);
@@ -349,7 +349,7 @@ static BOOL initialized = NO;
 - (void) addNewTask: (NSString*) taskId url: (NSString*) url status: (int) status progress: (int) progress filename: (NSString*) filename savedDir: (NSString*) savedDir headers: (NSString*) headers resumable: (BOOL) resumable showNotification: (BOOL) showNotification openFileFromNotification: (BOOL) openFileFromNotification
 {
     headers = [self escape:headers revert:false];
-    NSString *query = [NSString stringWithFormat:@"INSERT INTO task (task_id,url,status,progress,file_name,saved_dir,headers,resumable,show_notification,open_file_from_notification,time_created) VALUES (\"%@\",\"%@\",%d,%d,\"%@\",\"%@\",\"%@\",%d,%d,%d,%ld)", taskId, url, status, progress, filename, savedDir, headers, resumable ? 1 : 0, showNotification ? 1 : 0, openFileFromNotification ? 1 : 0, [self currentTimeInMilliseconds]];
+    NSString *query = [NSString stringWithFormat:@"INSERT INTO task (task_id,url,status,progress,file_name,saved_dir,headers,resumable,show_notification,open_file_from_notification,time_created) VALUES (\"%@\",\"%@\",%d,%d,\"%@\",\"%@\",\"%@\",%d,%d,%d,%lld)", taskId, url, status, progress, filename, savedDir, headers, resumable ? 1 : 0, showNotification ? 1 : 0, openFileFromNotification ? 1 : 0, [self currentTimeInMilliseconds]];
     [_dbManager executeQuery:query];
     if (_dbManager.affectedRows != 0) {
         NSLog(@"Query was executed successfully. Affected rows = %d", _dbManager.affectedRows);
@@ -390,7 +390,7 @@ static BOOL initialized = NO;
 }
 
 - (void) updateTask: (NSString*) currentTaskId newTaskId: (NSString*) newTaskId status: (int) status resumable: (BOOL) resumable {
-    NSString *query = [NSString stringWithFormat:@"UPDATE task SET task_id=\"%@\", status=%d, resumable=%d, time_created=%ld WHERE task_id=\"%@\"", newTaskId, status, resumable ? 1 : 0, [self currentTimeInMilliseconds], currentTaskId];
+    NSString *query = [NSString stringWithFormat:@"UPDATE task SET task_id=\"%@\", status=%d, resumable=%d, time_created=%lld WHERE task_id=\"%@\"", newTaskId, status, resumable ? 1 : 0, [self currentTimeInMilliseconds], currentTaskId];
     [_dbManager executeQuery:query];
     if (_dbManager.affectedRows != 0) {
         NSLog(@"Query was executed successfully. Affected rows = %d", _dbManager.affectedRows);
@@ -836,16 +836,16 @@ static BOOL initialized = NO;
 
     __typeof__(self) __weak weakSelf = self;
     if (success) {
+        [self sendUpdateProgressForTaskId:taskId inStatus:@(STATUS_COMPLETE) andProgress:@100];
         dispatch_sync(databaseQueue, ^{
             [weakSelf updateTask:taskId status:STATUS_COMPLETE progress:100];
         });
-        [self sendUpdateProgressForTaskId:taskId inStatus:@(STATUS_COMPLETE) andProgress:@100];
     } else {
         NSLog(@"Unable to copy temp file. Error: %@", [error localizedDescription]);
+        [self sendUpdateProgressForTaskId:taskId inStatus:@(STATUS_FAILED) andProgress:@(-1)];
         dispatch_sync(databaseQueue, ^{
             [weakSelf updateTask:taskId status:STATUS_FAILED progress:-1];
         });
-        [self sendUpdateProgressForTaskId:taskId inStatus:@(STATUS_FAILED) andProgress:@(-1)];
     }
 }
 
@@ -868,12 +868,12 @@ static BOOL initialized = NO;
             } else {
                 status = STATUS_FAILED;
             }
+            [_runningTaskById removeObjectForKey:taskId];
+            [self sendUpdateProgressForTaskId:taskId inStatus:@(status) andProgress:@(-1)];
             __typeof__(self) __weak weakSelf = self;
             dispatch_sync(databaseQueue, ^{
                 [weakSelf updateTask:taskId status:status progress:-1];
             });
-            [_runningTaskById removeObjectForKey:taskId];
-            [self sendUpdateProgressForTaskId:taskId inStatus:@(status) andProgress:@(-1)];
         }
     }
 }
@@ -899,7 +899,7 @@ static BOOL initialized = NO;
 
                     // Show a local notification when all downloads are over.
                     UILocalNotification *localNotification = [[UILocalNotification alloc] init];
-                    localNotification.alertBody = _allFilesDownloadedMsg;
+                    localNotification.alertBody = self->_allFilesDownloadedMsg;
                     [[UIApplication sharedApplication] presentLocalNotificationNow:localNotification];
                 }];
             }
