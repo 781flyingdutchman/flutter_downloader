@@ -152,12 +152,12 @@ static BOOL initialized = NO;
     return task;
 }
 
-- (NSString*)identifierForTask:(NSURLSessionDownloadTask*) task
+- (NSString*)identifierForTask:(NSURLSessionTask*) task
 {
     return [NSString stringWithFormat: @"%@.%lu", [[[self currentSession] configuration] identifier], [task taskIdentifier]];
 }
 
-- (NSString*)identifierForTask:(NSURLSessionDownloadTask*) task ofSession:(NSURLSession *)session
+- (NSString*)identifierForTask:(NSURLSessionTask*) task ofSession:(NSURLSession *)session
 {
     return [NSString stringWithFormat: @"%@.%lu", [[session configuration] identifier], [task taskIdentifier]];
 }
@@ -270,7 +270,6 @@ static BOOL initialized = NO;
 
 - (NSURL*)fileUrlFromDict:(NSDictionary*)dict
 {
-    NSString *url = dict[KEY_URL];
     NSString *savedDir = dict[KEY_SAVED_DIR];
     NSString *filename = dict[KEY_FILE_NAME];
     NSLog(@"savedDir: %@", savedDir);
@@ -838,16 +837,16 @@ static BOOL initialized = NO;
 
     __typeof__(self) __weak weakSelf = self;
     if (success) {
-        [self sendUpdateProgressForTaskId:taskId inStatus:@(STATUS_COMPLETE) andProgress:@100];
         dispatch_sync(databaseQueue, ^{
             [weakSelf updateTask:taskId status:STATUS_COMPLETE progress:100];
         });
+        [self sendUpdateProgressForTaskId:taskId inStatus:@(STATUS_COMPLETE) andProgress:@100];
     } else {
         NSLog(@"Unable to copy temp file. Error: %@", [error localizedDescription]);
-        [self sendUpdateProgressForTaskId:taskId inStatus:@(STATUS_FAILED) andProgress:@(-1)];
         dispatch_sync(databaseQueue, ^{
             [weakSelf updateTask:taskId status:STATUS_FAILED progress:-1];
         });
+        [self sendUpdateProgressForTaskId:taskId inStatus:@(STATUS_FAILED) andProgress:@(-1)];
     }
 }
 
@@ -870,12 +869,12 @@ static BOOL initialized = NO;
             } else {
                 status = STATUS_FAILED;
             }
-            [_runningTaskById removeObjectForKey:taskId];
-            [self sendUpdateProgressForTaskId:taskId inStatus:@(status) andProgress:@(-1)];
             __typeof__(self) __weak weakSelf = self;
             dispatch_sync(databaseQueue, ^{
                 [weakSelf updateTask:taskId status:status progress:-1];
             });
+            [_runningTaskById removeObjectForKey:taskId];
+            [self sendUpdateProgressForTaskId:taskId inStatus:@(status) andProgress:@(-1)];
         }
     }
 }
@@ -901,7 +900,7 @@ static BOOL initialized = NO;
 
                     // Show a local notification when all downloads are over.
                     UILocalNotification *localNotification = [[UILocalNotification alloc] init];
-                    localNotification.alertBody = _allFilesDownloadedMsg;
+                    localNotification.alertBody = self._allFilesDownloadedMsg;
                     [[UIApplication sharedApplication] presentLocalNotificationNow:localNotification];
                 }];
             }
